@@ -85,6 +85,69 @@ bool isBestEffort(const std::string & policy)
 {
   return policy == "best_effort";
 }
+
+bool perManeuver(const std::string & policy)
+{
+  return policy == "maneuver";
+}
+
+AvoidLine merge(const AvoidLine & line1, const AvoidLine & line2, const uint64_t id)
+{
+  AvoidLine ret{};
+
+  ret.start_idx = line1.start_idx;
+  ret.start_shift_length = line1.start_shift_length;
+  ret.start_longitudinal = line1.start_longitudinal;
+
+  ret.end_idx = line2.end_idx;
+  ret.end_shift_length = line2.end_shift_length;
+  ret.end_longitudinal = line2.end_longitudinal;
+
+  ret.id = id;
+  ret.object = line1.object;
+
+  return ret;
+}
+
+AvoidLine fill(const AvoidLine & line1, const AvoidLine & line2, const uint64_t id)
+{
+  AvoidLine ret{};
+
+  ret.start_idx = line1.end_idx;
+  ret.start_shift_length = line1.end_shift_length;
+  ret.start_longitudinal = line1.end_longitudinal;
+
+  ret.end_idx = line2.start_idx;
+  ret.end_shift_length = line2.start_shift_length;
+  ret.end_longitudinal = line2.start_longitudinal;
+
+  ret.id = id;
+  ret.object = line1.object;
+
+  return ret;
+}
+
+AvoidLineArray toArray(const AvoidOutlines & outlines)
+{
+  AvoidLineArray ret{};
+  for (const auto & outline : outlines) {
+    ret.push_back(outline.avoid_line);
+    ret.push_back(outline.return_line);
+
+    std::for_each(
+      outline.middle_lines.begin(), outline.middle_lines.end(),
+      [&ret](const auto & line) { ret.push_back(line); });
+  }
+  return ret;
+}
+
+lanelet::BasicLineString3d toLineString3d(const std::vector<Point> & bound)
+{
+  lanelet::BasicLineString3d ret{};
+  std::for_each(
+    bound.begin(), bound.end(), [&](const auto & p) { ret.emplace_back(p.x, p.y, p.z); });
+  return ret;
+}
 }  // namespace
 
 AvoidanceModule::AvoidanceModule(
@@ -2316,9 +2379,18 @@ AvoidLineArray AvoidanceModule::findNewShiftLine(const AvoidLineArray & candidat
       break;
     }
 
-    if (!is_ignore_shift(candidate)) {
-      return get_subsequent_shift(i);
+    if (is_ignore_shift(candidate)) {
+      continue;
     }
+
+    if (perManeuver(parameters_->policy_approval)) {
+      debug.step4_new_shift_line = shift_lines;
+      return shift_lines;
+    }
+
+    const auto new_shift_lines = get_subsequent_shift(i);
+    debug.step4_new_shift_line = new_shift_lines;
+    return new_shift_lines;
   }
 
   DEBUG_PRINT("No new shift point exists.");
