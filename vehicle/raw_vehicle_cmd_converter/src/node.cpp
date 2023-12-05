@@ -19,6 +19,26 @@
 #include <string>
 #include <vector>
 
+namespace
+{
+template <class T>
+bool update_param(
+  const std::vector<rclcpp::Parameter> & params, const std::string & name, T & value)
+{
+  const auto itr = std::find_if(
+    params.cbegin(), params.cend(),
+    [&name](const rclcpp::Parameter & p) { return p.get_name() == name; });
+
+  // Not found
+  if (itr == params.cend()) {
+    return false;
+  }
+
+  value = itr->template get_value<T>();
+  return true;
+}
+}  // namespace
+
 namespace raw_vehicle_cmd_converter
 {
 RawVehicleCommandConverterNode::RawVehicleCommandConverterNode(
@@ -86,6 +106,10 @@ RawVehicleCommandConverterNode::RawVehicleCommandConverterNode(
     "/vehicle/raw_vehicle_cmd_converter/debug/steer_pid", 1);
 
   logger_configure_ = std::make_unique<tier4_autoware_utils::LoggerLevelConfigure>(this);
+
+  /* get parameter updates */
+  set_param_res_ = this->add_on_set_parameters_callback(
+    std::bind(&RawVehicleCommandConverterNode::onParameter, this, _1));
 }
 
 void RawVehicleCommandConverterNode::publishActuationCmd()
@@ -220,6 +244,24 @@ void RawVehicleCommandConverterNode::onControlCmd(const AckermannControlCommand:
 {
   control_cmd_ptr_ = msg;
   publishActuationCmd();
+}
+
+rcl_interfaces::msg::SetParametersResult RawVehicleCommandConverterNode::onParameter(
+  const std::vector<rclcpp::Parameter> & parameters)
+{
+  rcl_interfaces::msg::SetParametersResult result;
+  result.successful = true;
+  result.reason = "success";
+
+  try {
+    update_param(parameters, "max_brake", max_brake_cmd_);
+  } catch (const rclcpp::exceptions::InvalidParameterTypeException & e) {
+    result.successful = false;
+    result.reason = e.what();
+  }
+    RCLCPP_INFO(
+      get_logger(), "max_brake param is updated to %.3f", max_brake_cmd_);
+  return result;
 }
 }  // namespace raw_vehicle_cmd_converter
 

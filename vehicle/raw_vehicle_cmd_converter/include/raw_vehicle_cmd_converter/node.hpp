@@ -103,8 +103,12 @@ public:
   bool convert_accel_cmd_;  //!< @brief use accel or not
   bool convert_brake_cmd_;  //!< @brief use brake or not
   bool convert_steer_cmd_;  //!< @brief use steer or not
-  rclcpp::Time prev_time_steer_calculation_{0, 0, RCL_ROS_TIME};
+  // Parameter Reconfigure
+  OnSetParametersCallbackHandle::SharedPtr set_param_res_;
+  rcl_interfaces::msg::SetParametersResult onParameter(
+    const std::vector<rclcpp::Parameter> & parameters);
 
+  rclcpp::Time prev_time_steer_calculation_{0, 0, RCL_ROS_TIME};
   double calculateAccelMap(
     const double current_velocity, const double desired_acc, bool & accel_cmd_is_zero);
   double calculateBrakeMap(const double current_velocity, const double desired_acc);
