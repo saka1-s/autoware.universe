@@ -170,6 +170,7 @@ rcl_interfaces::msg::SetParametersResult MrmEmergencyStopOperator::onParameter(
   }
   RCLCPP_INFO(
     get_logger(), "target_acceleration param is updated to %.3f", params_.target_acceleration);
+  RCLCPP_INFO(get_logger(), "target_jerk param is updated to %.3f", params_.target_jerk);
   return result;
 }
 
