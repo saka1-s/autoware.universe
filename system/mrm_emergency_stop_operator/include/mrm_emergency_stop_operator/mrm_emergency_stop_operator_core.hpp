@@ -48,6 +48,10 @@ public:
 private:
   // Parameters
   Parameters params_;
+  // Parameter Reconfigure
+  OnSetParametersCallbackHandle::SharedPtr set_param_res_;
+  rcl_interfaces::msg::SetParametersResult onParameter(
+    const std::vector<rclcpp::Parameter> & parameters);
 
   // Subscriber
   rclcpp::Subscription<AckermannControlCommand>::SharedPtr sub_control_cmd_;

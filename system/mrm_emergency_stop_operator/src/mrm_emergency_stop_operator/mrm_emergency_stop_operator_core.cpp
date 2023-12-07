@@ -16,6 +16,25 @@
 
 namespace mrm_emergency_stop_operator
 {
+namespace
+{
+template <class T>
+bool update_param(
+  const std::vector<rclcpp::Parameter> & params, const std::string & name, T & value)
+{
+  const auto itr = std::find_if(
+    params.cbegin(), params.cend(),
+    [&name](const rclcpp::Parameter & p) { return p.get_name() == name; });
+
+  // Not found
+  if (itr == params.cend()) {
+    return false;
+  }
+
+  value = itr->template get_value<T>();
+  return true;
+}
+}  // namespace
 
 MrmEmergencyStopOperator::MrmEmergencyStopOperator(const rclcpp::NodeOptions & node_options)
 : Node("mrm_emergency_stop_operator", node_options)
@@ -49,6 +68,10 @@ MrmEmergencyStopOperator::MrmEmergencyStopOperator(const rclcpp::NodeOptions & n
   // Initialize
   status_.state = MrmBehaviorStatus::AVAILABLE;
   is_prev_control_cmd_subscribed_ = false;
+
+  /* get parameter updates */
+  set_param_res_ = this->add_on_set_parameters_callback(
+    std::bind(&MrmEmergencyStopOperator::onParameter, this, _1));
 }
 
 void MrmEmergencyStopOperator::onControlCommand(AckermannControlCommand::ConstSharedPtr msg)
@@ -129,6 +152,25 @@ AckermannControlCommand MrmEmergencyStopOperator::calcTargetAcceleration(
   }
 
   return control_cmd;
+}
+
+rcl_interfaces::msg::SetParametersResult MrmEmergencyStopOperator::onParameter(
+  const std::vector<rclcpp::Parameter> & parameters)
+{
+  rcl_interfaces::msg::SetParametersResult result;
+  result.successful = true;
+  result.reason = "success";
+
+  try {
+    update_param(parameters, "target_acceleration", params_.target_acceleration);
+    update_param(parameters, "target_jerk", params_.target_jerk);
+  } catch (const rclcpp::exceptions::InvalidParameterTypeException & e) {
+    result.successful = false;
+    result.reason = e.what();
+  }
+  RCLCPP_INFO(
+    get_logger(), "target_acceleration param is updated to %.3f", params_.target_acceleration);
+  return result;
 }
 
 }  // namespace mrm_emergency_stop_operator
