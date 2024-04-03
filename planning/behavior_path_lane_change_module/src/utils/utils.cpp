@@ -30,7 +30,11 @@
 #include <motion_utils/trajectory/path_with_lane_id.hpp>
 #include <motion_utils/trajectory/trajectory.hpp>
 #include <rclcpp/rclcpp.hpp>
+#include <tier4_autoware_utils/geometry/boost_geometry.hpp>
 #include <tier4_autoware_utils/geometry/boost_polygon_utils.hpp>
+#include <vehicle_info_util/vehicle_info.hpp>
+
+#include <geometry_msgs/msg/detail/pose__struct.hpp>
 
 #include <lanelet2_core/LaneletMap.h>
 #include <lanelet2_core/geometry/LineString.h>
@@ -1099,7 +1103,7 @@ std::optional<lanelet::BasicPolygon2d> createPolygon(
 ExtendedPredictedObject transform(
   const PredictedObject & object,
   [[maybe_unused]] const BehaviorPathPlannerParameters & common_parameters,
-  const LaneChangeParameters & lane_change_parameters)
+  const LaneChangeParameters & lane_change_parameters, const bool check_at_prepare_phase)
 {
   ExtendedPredictedObject extended_object;
   extended_object.uuid = object.object_id;
@@ -1109,8 +1113,6 @@ ExtendedPredictedObject transform(
   extended_object.shape = object.shape;
 
   const auto & time_resolution = lane_change_parameters.prediction_time_resolution;
-  const auto & check_at_prepare_phase =
-    lane_change_parameters.enable_prepare_segment_collision_check;
   const auto & prepare_duration = lane_change_parameters.lane_change_prepare_duration;
   const auto & velocity_threshold =
     lane_change_parameters.prepare_segment_ignore_object_velocity_thresh;
@@ -1168,4 +1170,70 @@ rclcpp::Logger getLogger(const std::string & type)
 {
   return rclcpp::get_logger("lane_change").get_child(type);
 }
+
+Polygon2d getEgoCurrentFootprint(
+  const Pose & ego_pose, const vehicle_info_util::VehicleInfo & ego_info)
+{
+  const auto base_to_front = ego_info.max_longitudinal_offset_m;
+  const auto base_to_rear = ego_info.rear_overhang_m;
+  const auto width = ego_info.vehicle_width_m;
+
+  return tier4_autoware_utils::toFootprint(ego_pose, base_to_front, base_to_rear, width);
+}
+
+bool isWithinIntersection(
+  const std::shared_ptr<RouteHandler> & route_handler, const lanelet::ConstLanelet & lanelet,
+  const Polygon2d & polygon)
+{
+  const std::string id = lanelet.attributeOr("intersection_area", "else");
+  if (id == "else") {
+    return false;
+  }
+
+  const auto lanelet_polygon =
+    route_handler->getLaneletMapPtr()->polygonLayer.get(std::atoi(id.c_str()));
+
+  return boost::geometry::within(
+    polygon, utils::toPolygon2d(lanelet::utils::to2D(lanelet_polygon.basicPolygon())));
+}
 }  // namespace behavior_path_planner::utils::lane_change
+
+namespace behavior_path_planner::utils::lane_change::debug
+{
+geometry_msgs::msg::Point32 create_point32(const geometry_msgs::msg::Pose & pose)
+{
+  geometry_msgs::msg::Point32 p;
+  p.x = static_cast<float>(pose.position.x);
+  p.y = static_cast<float>(pose.position.y);
+  p.z = static_cast<float>(pose.position.z);
+  return p;
+};
+
+geometry_msgs::msg::Polygon createExecutionArea(
+  const vehicle_info_util::VehicleInfo & vehicle_info, const Pose & pose,
+  double additional_lon_offset, double additional_lat_offset)
+{
+  const double & base_to_front = vehicle_info.max_longitudinal_offset_m;
+  const double & width = vehicle_info.vehicle_width_m;
+  const double & base_to_rear = vehicle_info.rear_overhang_m;
+
+  // if stationary object, extend forward and backward by the half of lon length
+  const double forward_lon_offset = base_to_front + additional_lon_offset;
+  const double backward_lon_offset = -base_to_rear;
+  const double lat_offset = width / 2.0 + additional_lat_offset;
+
+  const auto p1 = tier4_autoware_utils::calcOffsetPose(pose, forward_lon_offset, lat_offset, 0.0);
+  const auto p2 = tier4_autoware_utils::calcOffsetPose(pose, forward_lon_offset, -lat_offset, 0.0);
+  const auto p3 = tier4_autoware_utils::calcOffsetPose(pose, backward_lon_offset, -lat_offset, 0.0);
+  const auto p4 = tier4_autoware_utils::calcOffsetPose(pose, backward_lon_offset, lat_offset, 0.0);
+  geometry_msgs::msg::Polygon polygon;
+
+  polygon.points.push_back(create_point32(p1));
+  polygon.points.push_back(create_point32(p2));
+  polygon.points.push_back(create_point32(p3));
+  polygon.points.push_back(create_point32(p4));
+
+  return polygon;
+}
+
+}  // namespace behavior_path_planner::utils::lane_change::debug
