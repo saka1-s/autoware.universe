@@ -19,7 +19,6 @@
 
 #include <memory>
 #include <string>
-#include <utility>
 
 namespace traffic_light
 {
@@ -91,31 +90,18 @@ bool TrafficLightRoiVisualizerNodelet::createRect(
   cv::Mat & image, const tier4_perception_msgs::msg::TrafficLightRoi & tl_roi,
   const ClassificationResult & result)
 {
-  cv::Scalar color;
-  if (result.label.find("red") != std::string::npos) {
-    color = cv::Scalar{255, 0, 0};
-  } else if (result.label.find("yellow") != std::string::npos) {
-    color = cv::Scalar{0, 255, 0};
-  } else if (result.label.find("green") != std::string::npos) {
-    color = cv::Scalar{0, 0, 255};
-  } else {
-    color = cv::Scalar{255, 255, 255};
-  }
+  const auto info = extractShapeInfo(result.label);
 
   cv::rectangle(
     image, cv::Point(tl_roi.roi.x_offset, tl_roi.roi.y_offset),
     cv::Point(tl_roi.roi.x_offset + tl_roi.roi.width, tl_roi.roi.y_offset + tl_roi.roi.height),
-    color, 3);
+    info.color, 2);
 
-  int offset = 40;
-  cv::putText(
-    image, std::to_string(result.prob),
-    cv::Point(tl_roi.roi.x_offset, tl_roi.roi.y_offset - (offset * 0)), cv::FONT_HERSHEY_COMPLEX,
-    1.1, color, 3);
+  constexpr int shape_img_size = 16;
+  const auto position = cv::Point(tl_roi.roi.x_offset, tl_roi.roi.y_offset);
 
-  cv::putText(
-    image, result.label, cv::Point(tl_roi.roi.x_offset, tl_roi.roi.y_offset - (offset * 1)),
-    cv::FONT_HERSHEY_COMPLEX, 1.1, color, 2);
+  visualization::drawTrafficLightShape(
+    image, info.shapes, shape_img_size, position, info.color, result.prob);
 
   return true;
 }
