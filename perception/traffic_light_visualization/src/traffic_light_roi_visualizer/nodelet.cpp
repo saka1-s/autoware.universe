@@ -19,6 +19,7 @@
 
 #include <memory>
 #include <string>
+#include "traffic_light_visualization/traffic_light_roi_visualizer/shape_draw.hpp"
 
 namespace traffic_light
 {
