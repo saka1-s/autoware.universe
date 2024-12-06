@@ -292,7 +292,15 @@ void CrosswalkTrafficLightEstimatorNode::setCrosswalkTrafficSignal(
   for (const auto & tl_reg_elem : tl_reg_elems) {
     auto id = tl_reg_elem->id();
     // if valid prediction exists, overwrite the estimation; else, use the estimation
+    bool valid_prediction = false;
     if (valid_id2idx_map.count(id)) {
+      size_t idx = valid_id2idx_map[id];
+      auto signal = msg.traffic_light_groups[idx];
+      if (output.traffic_light_groups[idx].elements[0].color != TrafficSignalElement::UNKNOWN){
+        valid_prediction = true;
+      }
+    }
+    if (valid_prediction) {
       size_t idx = valid_id2idx_map[id];
       auto signal = msg.traffic_light_groups[idx];
       updateFlashingState(signal);  // check if it is flashing
