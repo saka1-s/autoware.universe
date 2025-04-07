@@ -145,9 +145,13 @@ void TrafficLightModuleManager::launchNewModules(
     // Use lanelet_id to unregister module when the route is changed
     const auto lane_id = traffic_light_reg_elem.second.id();
     if (!isModuleRegisteredFromExistingAssociatedModule(lane_id)) {
-      registerModule(std::make_shared<TrafficLightModule>(
+      registerModule(
+        std::make_shared<TrafficLightModule>(
         lane_id, *(traffic_light_reg_elem.first), traffic_light_reg_elem.second, planner_param_,
-        logger_.get_child("traffic_light_module"), clock_));
+        logger_.get_child("traffic_light_module"), clock_,
+        std::bind(
+          &TrafficLightModuleManager::getV2IRestTimeToRedSignal, this,
+          traffic_light_reg_elem.first->id())));
       generateUUID(lane_id);
       updateRTCStatus(
         getUUID(lane_id), true, State::WAITING_FOR_EXECUTION, std::numeric_limits<double>::lowest(),

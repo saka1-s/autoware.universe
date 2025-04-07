@@ -164,7 +164,9 @@ bool calcStopPointAndInsertIndex(
 TrafficLightModule::TrafficLightModule(
   const int64_t lane_id, const lanelet::TrafficLight & traffic_light_reg_elem,
   lanelet::ConstLanelet lane, const PlannerParam & planner_param, const rclcpp::Logger logger,
-  const rclcpp::Clock::SharedPtr clock)
+  const rclcpp::Clock::SharedPtr clock,
+  const std::function<std::optional<TrafficSignalTimeToRedStamped>(void)> &
+    get_rest_time_to_red_signal)
  : SceneModuleInterface(lane_id, logger, clock),
   lane_id_(lane_id),
   traffic_light_reg_elem_(traffic_light_reg_elem),
@@ -235,7 +237,7 @@ bool TrafficLightModule::modifyPathVelocity(PathWithLaneId * path, StopReason * 
     // Use V2I if available
     if (planner_param_.v2i_use_rest_time && !is_stop_signal) {
       bool is_v2i_handled = handleV2I(signed_arc_length_to_stop_point, [&]() {
-        *path = insertStopPose(input_path, stop_line.value().first, stop_line.value().second);
+        *path = insertStopPose(input_path, stop_line_point_idx, stop_line_point, stop_reason);
       });
       if (is_v2i_handled) {
         return true;

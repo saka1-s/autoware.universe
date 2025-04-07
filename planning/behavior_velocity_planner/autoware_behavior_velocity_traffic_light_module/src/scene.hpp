@@ -82,7 +82,9 @@ public:
   TrafficLightModule(
     const int64_t lane_id, const lanelet::TrafficLight & traffic_light_reg_elem,
     lanelet::ConstLanelet lane, const PlannerParam & planner_param, const rclcpp::Logger logger,
-    const rclcpp::Clock::SharedPtr clock);
+    const rclcpp::Clock::SharedPtr clock,
+    const std::function<std::optional<TrafficSignalTimeToRedStamped>(void)> &
+      get_rest_time_to_red_signal);
 
   bool modifyPathVelocity(PathWithLaneId * path, StopReason * stop_reason) override;
 
