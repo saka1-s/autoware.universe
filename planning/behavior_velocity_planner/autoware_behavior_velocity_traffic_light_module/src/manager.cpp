@@ -71,8 +71,6 @@ void TrafficLightModuleManager::modifyPathVelocity(tier4_planning_msgs::msg::Pat
 
   if (planner_param_.v2i_use_rest_time) updateV2IRestTimeInfo();
 
-  if (planner_param_.v2i_use_rest_time) updateV2IRestTimeInfo();
-
   autoware_adapi_v1_msgs::msg::VelocityFactorArray velocity_factor_array;
   velocity_factor_array.header.frame_id = "map";
   velocity_factor_array.header.stamp = clock_->now();
@@ -149,11 +147,7 @@ void TrafficLightModuleManager::launchNewModules(
     if (!isModuleRegisteredFromExistingAssociatedModule(lane_id)) {
       registerModule(std::make_shared<TrafficLightModule>(
         lane_id, *(traffic_light_reg_elem.first), traffic_light_reg_elem.second, planner_param_,
-        logger_.get_child("traffic_light_module"), clock_, time_keeper_,
-        std::bind(
-          &TrafficLightModuleManager::getV2IRestTimeToRedSignal, this,
-          traffic_light_reg_elem.first->id()),
-        planning_factor_interface_));
+        logger_.get_child("traffic_light_module"), clock_));
       generateUUID(lane_id);
       updateRTCStatus(
         getUUID(lane_id), true, State::WAITING_FOR_EXECUTION, std::numeric_limits<double>::lowest(),

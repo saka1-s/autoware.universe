@@ -164,13 +164,8 @@ bool calcStopPointAndInsertIndex(
 TrafficLightModule::TrafficLightModule(
   const int64_t lane_id, const lanelet::TrafficLight & traffic_light_reg_elem,
   lanelet::ConstLanelet lane, const PlannerParam & planner_param, const rclcpp::Logger logger,
-  const rclcpp::Clock::SharedPtr clock,
-  const std::shared_ptr<universe_utils::TimeKeeper> time_keeper,
-  const std::function<std::optional<TrafficSignalTimeToRedStamped>(void)> &
-    get_rest_time_to_red_signal,
-  const std::shared_ptr<planning_factor_interface::PlanningFactorInterface>
-    planning_factor_interface)
-: SceneModuleInterfaceWithRTC(lane_id, logger, clock, time_keeper, planning_factor_interface),
+  const rclcpp::Clock::SharedPtr clock)
+ : SceneModuleInterface(lane_id, logger, clock),
   lane_id_(lane_id),
   traffic_light_reg_elem_(traffic_light_reg_elem),
   lane_(lane),
